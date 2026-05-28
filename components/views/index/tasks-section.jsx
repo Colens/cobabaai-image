@@ -49,7 +49,7 @@ const TaskItem = memo(
         <div
           className={`relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300 transform hover:scale-105 ${
             selectionMode && selectedImages.includes(image.id)
-              ? "ring-4 ring-violet-500 ring-opacity-70"
+              ? "ring-4 ring-teal-500 ring-opacity-70"
               : ""
           }`}
         >
@@ -112,7 +112,7 @@ const TaskItem = memo(
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
                       <div
-                        className="bg-violet-600 h-2.5 rounded-full transition-all duration-300"
+                        className="bg-teal-600 h-2.5 rounded-full transition-all duration-300"
                         style={{
                           width: `${Math.min(
                             100,
@@ -123,7 +123,7 @@ const TaskItem = memo(
                     </div>
                   </div>
                 ) : (
-                  <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
                 )}
               </div>
             )}
@@ -152,7 +152,7 @@ const TaskItem = memo(
                 <div
                   className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
                     selectedImages.includes(image.id)
-                      ? "bg-violet-500 border-violet-500"
+                      ? "bg-teal-500 border-teal-500"
                       : "bg-white/70 border-gray-400"
                   }`}
                 >
@@ -299,7 +299,7 @@ const DownloadProgressModal = memo(
           </h3>
           <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700 mb-4">
             <div
-              className="bg-violet-600 h-4 rounded-full transition-all duration-300"
+              className="bg-teal-600 h-4 rounded-full transition-all duration-300"
               style={{ width: `${downloadProgress}%` }}
             ></div>
           </div>
@@ -766,7 +766,7 @@ const Tasks = ({ tasks, setTasks }) => {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 selectionMode
                   ? "bg-red-500 text-white hover:bg-red-600"
-                  : "bg-violet-600 text-white hover:bg-violet-700"
+                  : "bg-teal-600 text-white hover:bg-teal-700"
               }`}
             >
               {selectionMode ? "取消选择" : "批量下载"}
@@ -841,7 +841,7 @@ const Tasks = ({ tasks, setTasks }) => {
       )}
 
       {selectionMode && (
-        <div className="bg-violet-50 dark:bg-violet-900/30 text-violet-800 dark:text-violet-200 text-sm rounded-xl p-3 mb-4">
+        <div className="bg-teal-500/10 text-teal-800 dark:text-teal-200 text-sm rounded-xl p-3 mb-4">
           <div className="flex items-center">
             <svg
               className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0"

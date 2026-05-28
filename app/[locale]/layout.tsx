@@ -22,7 +22,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: config.Title,
   description: config.Description,
-  icons: "/favicon.ico",
+  icons: {
+    icon: [
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
     title: config.Title,
     description: config.Description,
@@ -72,8 +78,8 @@ export default async function LocaleLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="min-h-screen bg-gradient-to-br from-background via-background to-violet-950/20">
-            <div className="bg h-[600px] absolute top-0 left-0 w-full z-0"></div>
+          <div className="min-h-screen bg-background">
+            <div className="bg h-[600px] absolute top-0 left-0 w-full z-0 pointer-events-none"></div>
             <NextIntlClientProvider>{children}</NextIntlClientProvider>
           </div>
         </ThemeProvider>

@@ -44,73 +44,78 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* CobabaAi — Runway-inspired tokens (from new-api/web/src/styles/tokens.css) */
 :root {
-  --radius: 0.75rem;
-  --background: #faf8ff;
-  --foreground: #1e1033;
+  --radius: 0.625rem;
+  --background: #fafafa;
+  --foreground: #171717;
   --card: #ffffff;
-  --card-foreground: #2d1b4e;
+  --card-foreground: #171717;
   --popover: #ffffff;
-  --popover-foreground: #2d1b4e;
-  --primary: #7c3aed;
+  --popover-foreground: #171717;
+  --primary: #171717;
   --primary-foreground: #ffffff;
-  --secondary: #f3eeff;
-  --secondary-foreground: #4c1d95;
-  --muted: #ede9fe;
-  --muted-foreground: #6b7280;
-  --accent: #ddd6fe;
-  --accent-foreground: #4c1d95;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: rgba(13, 148, 136, 0.08);
+  --accent-foreground: #0d9488;
   --destructive: #ef4444;
-  --border: #e9d5ff;
-  --input: #f5f3ff;
-  --ring: #7c3aed;
-  --chart-1: #7c3aed;
-  --chart-2: #8b5cf6;
-  --chart-3: #a78bfa;
-  --chart-4: #c4b5fd;
-  --chart-5: #ddd6fe;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #2d1b4e;
-  --sidebar-primary: #7c3aed;
+  --border: #e5e5e5;
+  --input: #ffffff;
+  --ring: #171717;
+  --chart-1: #0d9488;
+  --chart-2: #14b8a6;
+  --chart-3: #2dd4bf;
+  --chart-4: #5eead4;
+  --chart-5: #99f6e4;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: #171717;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f3eeff;
-  --sidebar-accent-foreground: #4c1d95;
-  --sidebar-border: #e9d5ff;
-  --sidebar-ring: #7c3aed;
+  --sidebar-accent: #f0f0f0;
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #171717;
+  --rw-accent: #0d9488;
+  --rw-accent-hover: #0f766e;
 }
 
 .dark {
-  --background: #0f0a1a;
-  --foreground: #ede9fe;
-  --card: #1a1225;
-  --card-foreground: #ede9fe;
-  --popover: #1a1225;
-  --popover-foreground: #ede9fe;
-  --primary: #a78bfa;
-  --primary-foreground: #0f0a1a;
-  --secondary: #2d1b4e;
-  --secondary-foreground: #ede9fe;
-  --muted: #2d1b4e;
-  --muted-foreground: #a1a1aa;
-  --accent: #2d1b4e;
-  --accent-foreground: #ede9fe;
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #141414;
+  --card-foreground: #fafafa;
+  --popover: #141414;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #fafafa;
+  --muted: #1a1a1a;
+  --muted-foreground: #737373;
+  --accent: rgba(45, 212, 191, 0.1);
+  --accent-foreground: #2dd4bf;
   --destructive: #f87171;
-  --border: #3b2667;
-  --input: #1a1225;
-  --ring: #a78bfa;
-  --chart-1: #a78bfa;
-  --chart-2: #8b5cf6;
-  --chart-3: #7c3aed;
-  --chart-4: #6d28d9;
-  --chart-5: #5b21b6;
-  --sidebar: #1a1225;
-  --sidebar-foreground: #ede9fe;
-  --sidebar-primary: #a78bfa;
-  --sidebar-primary-foreground: #0f0a1a;
-  --sidebar-accent: #2d1b4e;
-  --sidebar-accent-foreground: #ede9fe;
-  --sidebar-border: #3b2667;
-  --sidebar-ring: #a78bfa;
+  --border: #262626;
+  --input: #141414;
+  --ring: #fafafa;
+  --chart-1: #2dd4bf;
+  --chart-2: #14b8a6;
+  --chart-3: #0d9488;
+  --chart-4: #0f766e;
+  --chart-5: #115e59;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #fafafa;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #171717;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #262626;
+  --sidebar-ring: #fafafa;
+  --rw-accent: #2dd4bf;
+  --rw-accent-hover: #5eead4;
 }
 
 @layer base {
@@ -119,11 +124,19 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family:
+      "Inter",
+      "Noto Sans SC",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      "PingFang SC",
+      "Hiragino Sans GB",
+      "Microsoft YaHei",
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-}
-
-* {
-  font-family: "Source Han Sans CN", system-ui, sans-serif !important;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -139,19 +152,19 @@
 }
 
 .scrollbar-thumb-slate-300::-webkit-scrollbar-thumb {
-  background-color: #c4b5fd;
+  background-color: #d4d4d4;
 }
 
 .scrollbar-thumb-slate-400::-webkit-scrollbar-thumb {
-  background-color: #a78bfa;
+  background-color: #a3a3a3;
 }
 
 .dark .dark\:scrollbar-thumb-slate-600::-webkit-scrollbar-thumb {
-  background-color: #5b21b6;
+  background-color: #404040;
 }
 
 .dark .dark\:scrollbar-thumb-slate-500::-webkit-scrollbar-thumb {
-  background-color: #7c3aed;
+  background-color: #525252;
 }
 
 .scrollbar-thin {
@@ -159,9 +172,9 @@
 }
 
 .scrollbar-thumb-slate-300 {
-  scrollbar-color: #c4b5fd transparent;
+  scrollbar-color: #d4d4d4 transparent;
 }
 
 .dark .dark\:scrollbar-thumb-slate-600 {
-  scrollbar-color: #5b21b6 transparent;
+  scrollbar-color: #404040 transparent;
 }

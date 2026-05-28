@@ -1,72 +1,117 @@
 "use client";
-import Tasks from "./tasks-section";
-import ChatSection from "./chat-section";
+
+import { useEffect, useRef, useState } from "react";
 import config from "@/config";
-import { useState, useEffect } from "react";
+import { v4 as uuidv4 } from "uuid";
+import PromptListPanel from "./prompt-list-panel";
+import ResultsPanel from "./results-panel";
+import { createDefaultSlot, supportsImageSize, normalizeModel } from "./model-config";
+
+const STORAGE_KEY = "batchPromptData";
+
+const isStorableUrl = (url) =>
+  typeof url === "string" &&
+  (url.startsWith("http://") || url.startsWith("https://"));
+
+const serializeSlots = (slots) =>
+  slots.map(({ isGenerating, urls, ...rest }) => ({
+    ...rest,
+    urls: (urls || []).filter(isStorableUrl),
+  }));
+
+const MAX_STORED_RESULTS = 50;
+
+const serializeResults = (results) =>
+  (Array.isArray(results) ? results : [])
+    .filter(
+      (result) =>
+        !/api key|invalid token|unauthorized|未授权/i.test(result?.error || ""),
+    )
+    .slice(0, MAX_STORED_RESULTS)
+    .map((result) => ({
+      ...result,
+      src: isStorableUrl(result?.src) ? result.src : "",
+    }));
+
+const normalizeStoredResults = (raw) => {
+  if (Array.isArray(raw)) return serializeResults(raw);
+  if (raw && typeof raw === "object") {
+    return serializeResults(Object.values(raw));
+  }
+  return [];
+};
+
+const saveToStorage = (data) => {
+  try {
+    const payload = JSON.stringify(data);
+    localStorage.setItem(STORAGE_KEY, payload);
+  } catch (error) {
+    console.warn("localStorage quota exceeded, saving minimal data:", error);
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          slots: data.slots.map(({ prompt, model, size, imageSize, id }) => ({
+            id,
+            prompt,
+            model,
+            size,
+            imageSize,
+            urls: [],
+            variants: 1,
+            webHook: "-1",
+          })),
+          results: [],
+          masterPrompt: data.masterPrompt,
+        }),
+      );
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }
+};
+
 const GenerateSection = () => {
-  const [tasks, setTasks] = useState([]);
-  const [prompt, setPrompt] = useState();
-  const [uploading, setUploading] = useState(false);
-  const [isGenerate, setIsGenerate] = useState(false);
-  const [drawData, setDrawData] = useState({
-    prompt: ``,
-    size: "auto",
-    variants: 1,
-    model: "gpt-image-2",
-    urls: [],
-    webHook: "-1",
-  });
+  const [slots, setSlots] = useState([createDefaultSlot(uuidv4())]);
+  const [results, setResults] = useState([]);
+  const slotsRef = useRef(slots);
+  slotsRef.current = slots;
 
-  const handleImageUpload = async (e) => {
-    // 限制上传图片数量
-    if (drawData.urls.length >= 8) {
-      alert("最多只能上传8张图片");
-      return;
-    }
-    // 限制图片大小
-    for (const file of e.target.files) {
-      if (file.size > 10 * 1024 * 1024) {
-        alert("图片大小必须小于6MB");
-        return;
-      }
-    }
-    // 只允许图片格式，jpg, jpeg, png
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-    // 检查所有上传的文件类型
-    for (const file of e.target.files) {
-      if (!allowedTypes.includes(file.type)) {
-        alert("只允许上传 JPG, JPEG, PNG 和 WebP 文件");
-        return;
-      }
-    }
-
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-
-    for (const file of files) {
-      try {
-        setUploading(true);
-        //转为base64
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (e) => {
-          console.log(e.target.result);
-          setDrawData((prev) => ({
-            ...prev,
-            urls: [...prev.urls, e.target.result],
-          }));
-        };
-      } catch (error) {
-        console.error("Error uploading image:", error);
-      } finally {
-        setUploading(false);
-      }
-    }
+  const removeResult = (resultId) => {
+    setResults((prev) => prev.filter((item) => item.id !== resultId));
   };
 
+  const isAuthError = (message, status) =>
+    status === 401 ||
+    /api key|invalid token|unauthorized|未授权|无效/i.test(message || "");
+
+  const updateResult = (resultId, patch) => {
+    setResults((prev) =>
+      prev.map((item) =>
+        item.id === resultId ? { ...item, ...patch } : item,
+      ),
+    );
+  };
+
+  const [masterPrompt, setMasterPrompt] = useState("");
+
   const getAPIKEY = () => {
-    const savedApiKey = localStorage.getItem("apikey");
+    const savedApiKey = localStorage.getItem("apikey")?.trim();
     return savedApiKey || process.env.API_KEY;
+  };
+
+  const parseApiError = async (res) => {
+    try {
+      const data = await res.json();
+      return (
+        data?.msg ||
+        data?.error?.message ||
+        data?.message ||
+        `请求失败 (${res.status})`
+      );
+    } catch {
+      return `请求失败 (${res.status})`;
+    }
   };
 
   const getAPIEndpoint = (model) => {
@@ -84,254 +129,366 @@ const GenerateSection = () => {
       "nano-banana-2": `${baseUrl}/v1/draw/nano-banana`,
       "nano-banana-2-cl": `${baseUrl}/v1/draw/nano-banana`,
       "nano-banana-2-4k-cl": `${baseUrl}/v1/draw/nano-banana`,
-      "veo3.1-fast": `${baseUrl}/v1/video/veo`,
-      "veo3.1-pro": `${baseUrl}/v1/video/veo`,
     };
     return endpointMap[model] || `${baseUrl}/v1/draw/completions`;
   };
 
-  async function onGenerate() {
-    if (isGenerate) {
-      return;
+  const buildRequestData = (slot) => {
+    const requestData = {
+      prompt: slot.prompt,
+      variants: slot.variants,
+      model: slot.model,
+      urls: slot.urls,
+      webHook: slot.webHook,
+      aspectRatio: slot.size,
+    };
+
+    if (supportsImageSize(slot.model)) {
+      requestData.imageSize = slot.imageSize || "1K";
     }
-    if (!getAPIKEY()) {
-      alert("请先设置APIKEY");
-      return;
-    }
-    setIsGenerate(true);
+
+    return requestData;
+  };
+
+  const updateSlot = (slotId, patch) => {
+    setSlots((prev) =>
+      prev.map((slot) => (slot.id === slotId ? { ...slot, ...patch } : slot)),
+    );
+  };
+
+  const handleTask = async (resultId, taskId, slotId) => {
+    const baseUrl = config.ApiBaseUrl;
+
     try {
-      const apiEndpoint = getAPIEndpoint(drawData.model);
+      while (true) {
+        const res = await fetch(`${baseUrl}/v1/draw/result`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + getAPIKEY(),
+          },
+          body: JSON.stringify({ id: taskId }),
+        });
+        const result = await res.json();
 
-      // 根据模型类型转换尺寸参数
-      // 只有 gpt-image-2 使用size参数，其他模型使用aspectRatio参数
-      const requestData = { ...drawData };
-      requestData.aspectRatio = drawData.size;
-      // 删除size参数
-      delete requestData.size;
+        if (result.code === -22) {
+          updateResult(resultId, {
+            finish: true,
+            progress: 100,
+            error: "超时",
+            failureReason: "超时",
+          });
+          break;
+        }
 
-      if (drawData.model.indexOf("veo") !== -1 && drawData.urls.length > 0) {
-        requestData.firstFrameUrl = drawData.urls[0];
-        delete requestData.urls;
+        if (result.code !== 0) {
+          alert(result.msg);
+          break;
+        }
+
+        const data = result.data;
+
+        if (data.status === "running") {
+          updateResult(resultId, {
+            finish: false,
+            progress: data.progress,
+          });
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          continue;
+        }
+
+        if (data.status === "succeeded") {
+          let resultUrl = "";
+          if (data.results?.length > 0) {
+            resultUrl = data.results[0].url;
+          } else if (data.url) {
+            resultUrl = data.url;
+          }
+
+          updateResult(resultId, {
+            finish: true,
+            progress: data.progress,
+            src: resultUrl,
+            completedAt: Date.now(),
+          });
+          break;
+        }
+
+        if (data.status === "failed") {
+          updateResult(resultId, {
+            finish: true,
+            progress: 100,
+            failureReason: data.failure_reason,
+            error: data.error,
+          });
+          break;
+        }
       }
+    } finally {
+      updateSlot(slotId, { isGenerating: false });
+    }
+  };
 
-      // Remove imageSize for models other than nano-banana-pro
-      if (
-        drawData.model !== "nano-banana-pro" &&
-        drawData.model !== "nano-banana-pro-vt" &&
-        drawData.model !== "nano-banana-pro-cl" &&
-        drawData.model !== "nano-banana-pro-vip" &&
-        drawData.model !== "nano-banana-pro-4k-vip" &&
-        drawData.model !== "nano-banana-2" &&
-        drawData.model !== "nano-banana-2-cl" &&
-        drawData.model !== "nano-banana-2-4k-cl"
-      ) {
-        delete requestData.imageSize;
-      }
+  const canSendSlot = (slot) =>
+    !!slot &&
+    !slot.isGenerating &&
+    (!!slot.prompt?.trim() || slot.urls.length > 0);
 
-      const res = await fetch(apiEndpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + getAPIKEY(),
-        },
-        body: JSON.stringify(requestData),
-        cache: "no-store",
-      });
-      setIsGenerate(false);
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-      const data = await res.json();
-      if (data.code !== 0) {
-        alert(data.msg);
-        return;
-      }
-      const taskId = data.data.id;
+  const startGeneration = async (slot) => {
+    const slotId = slot.id;
+    const resultId = uuidv4();
 
-      const newTask = {
-        id: taskId,
+    setResults((prev) => [
+      {
+        id: resultId,
+        slotId,
+        taskId: "",
         finish: false,
-        loaded: false,
-        failureReason: "",
-        error: "",
         progress: 0,
         src: "",
-        alt: `Generated Image ${taskId}`,
-        model: drawData.model, // Save model to determine if it's a video or image
-      };
+        failureReason: "",
+        error: "",
+        model: slot.model,
+        invalidated: false,
+      },
+      ...prev,
+    ]);
 
-      // Add new task to the beginning of the tasks array
-      setTasks((prevTasks) => [newTask, ...prevTasks]);
-
-      handleTask(taskId);
-    } catch (error) {
-      setIsGenerate(false);
-      console.error("Error generating image:", error);
-    } finally {
-      setIsGenerate(false);
-    }
-  }
-
-  // 刷新页面后重新处理未完成的任务
-  function reHandlTask() {
-    const savedTasks = localStorage.getItem("savedTasks");
-    if (!savedTasks) {
-      return;
-    }
-    const tasks = JSON.parse(savedTasks);
-    // Set the saved tasks to the state first
-    setTasks(tasks);
-    // Then handle unfinished tasks
-    for (const task of tasks) {
-      if (!task.finish) {
-        handleTask(task.id);
-      }
-    }
-  }
-
-  function getCNZUrl(url) {
-    return url;
-    let result = url.replace(/https:\/\//g, ""); // g 标志表示全局替换所有匹配项
-    result = result.replace(/http:\/\//g, "");
-
-    // 提取最后一个.之后的字符串
-    const lastDotIndex = result.lastIndexOf(".");
-    let suffix = "";
-    if (lastDotIndex !== -1) {
-      suffix = result.substring(lastDotIndex + 1);
-      result = result.substring(0, lastDotIndex);
-    }
-
-    result = result.replace(/\./g, "_d_");
-    result = result.replace(/\//g, "_x_");
-    result = result + "." + suffix;
-
-    // 国内中转地址, 解决网络问题
-    return config.ApiBaseUrl + "/cnzfile/" + result;
-  }
-
-  async function handleTask(id) {
-    const baseUrl = config.ApiBaseUrl;
-    while (true) {
-      const res = await fetch(`${baseUrl}/v1/draw/result`, {
+    try {
+      const res = await fetch(getAPIEndpoint(slot.model), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: "Bearer " + getAPIKEY(),
         },
-        body: JSON.stringify({
-          id,
-        }),
+        body: JSON.stringify(buildRequestData(slot)),
+        cache: "no-store",
       });
-      const result = await res.json();
-      if (result.code === -22) {
-        setTasks((prev) =>
-          prev.map((task) => {
-            if (task.id === id) {
-              return {
-                ...task,
-                finish: true,
-                progress: 100,
-                error: "超时",
-                failureReason: "超时",
-              };
-            }
-            return task;
-          }),
-        );
-        break;
-      }
-      if (result.code !== 0) {
-        alert(result.msg);
-        break;
-      }
-      const data = result.data;
-      if (data.status === "running") {
-        setTasks((prev) =>
-          prev.map((task) => {
-            if (task.id === id) {
-              return { ...task, finish: false, progress: data.progress };
-            }
-            return task;
-          }),
-        );
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        continue;
-      }
-      if (data.status === "succeeded") {
-        let resultUrl = "";
-        if (data.results && data.results.length > 0) {
-          resultUrl = getCNZUrl(data.results[0].url);
-        } else if (data.url) {
-          resultUrl = getCNZUrl(data.url);
+
+      if (!res.ok) {
+        const message = await parseApiError(res);
+        if (isAuthError(message, res.status)) {
+          alert(
+            "API Key 无效或已过期，请点击右上角「设置 API Key」重新填写。\n\n" +
+              message,
+          );
+          removeResult(resultId);
         } else {
-          resultUrl = "";
+          alert(message);
+          updateResult(resultId, {
+            finish: true,
+            error: message,
+          });
         }
-        setTasks((prev) =>
-          prev.map((task) => {
-            if (task.id === id) {
-              return {
-                ...task,
-                progress: data.progress,
-                finish: true,
-                src: resultUrl,
-              };
-            }
-            return task;
-          }),
-        );
-        break;
+        return;
       }
-      if (data.status === "failed") {
-        setTasks((prev) =>
-          prev.map((task) => {
-            if (task.id === id) {
-              return {
-                ...task,
-                finish: true,
-                progress: 100,
-                failureReason: data.failure_reason,
-                error: data.error,
-              };
-            }
-            return task;
-          }),
-        );
-        break;
+
+      const data = await res.json();
+      if (data.code !== 0) {
+        if (isAuthError(data.msg)) {
+          alert(
+            "API Key 无效或已过期，请点击右上角「设置 API Key」重新填写。\n\n" +
+              data.msg,
+          );
+          removeResult(resultId);
+        } else {
+          alert(data.msg);
+          updateResult(resultId, {
+            finish: true,
+            error: data.msg,
+          });
+        }
+        return;
       }
+
+      const taskId = data.data.id;
+      updateResult(resultId, { taskId });
+
+      await handleTask(resultId, taskId, slotId);
+    } catch (error) {
+      console.error("Error generating image:", error);
+      updateResult(resultId, {
+        finish: true,
+        error: error.message || "生成失败",
+      });
+    } finally {
+      updateSlot(slotId, { isGenerating: false });
     }
-  }
+  };
+
+  const generateForSlot = async (slotId) => {
+    const slot = slotsRef.current.find((s) => s.id === slotId);
+    if (!canSendSlot(slot)) return;
+
+    if (!getAPIKEY()) {
+      alert("请先设置 API Key");
+      return;
+    }
+
+    updateSlot(slotId, { isGenerating: true });
+    await startGeneration(slot);
+  };
+
+  const handleSendAll = () => {
+    const sendable = slotsRef.current.filter(canSendSlot);
+
+    if (sendable.length === 0) {
+      alert("没有可发送的对话框（已在生成中或内容为空）");
+      return;
+    }
+
+    if (!getAPIKEY()) {
+      alert("请先设置 API Key");
+      return;
+    }
+
+    const sendableIds = new Set(sendable.map((s) => s.id));
+    setSlots((prev) =>
+      prev.map((s) =>
+        sendableIds.has(s.id) ? { ...s, isGenerating: true } : s,
+      ),
+    );
+
+    sendable.forEach((slot) => {
+      startGeneration(slot);
+    });
+  };
+
+  const handleMasterPromptChange = (value) => {
+    setMasterPrompt(value);
+    setSlots((prev) => prev.map((slot) => ({ ...slot, prompt: value })));
+  };
+
+  const handleSlotChange = (slotId, nextSlot) => {
+    setSlots((prev) =>
+      prev.map((slot) => (slot.id === slotId ? nextSlot : slot)),
+    );
+  };
+
+  const handleAddSlot = () => {
+    setSlots((prev) => [...prev, createDefaultSlot(uuidv4())]);
+  };
+
+  const handleRemoveSlot = (slotId) => {
+    setSlots((prev) => prev.filter((s) => s.id !== slotId));
+  };
+
+  const clearAllResults = () => {
+    if (results.length === 0) return;
+    const confirmed = window.confirm(
+      "确定要清空全部生成结果吗？\n\n此操作不可恢复，建议先批量下载需要保留的图片。",
+    );
+    if (confirmed) setResults([]);
+  };
+
+  const toggleResultInvalidated = (resultId) => {
+    setResults((prev) => {
+      const target = prev.find((r) => r.id === resultId);
+      if (!target) return prev;
+
+      const nextInvalidated = !target.invalidated;
+      const updated = { ...target, invalidated: nextInvalidated };
+      const others = prev.filter((r) => r.id !== resultId);
+      const active = others.filter((r) => !r.invalidated);
+      const inactive = others.filter((r) => r.invalidated);
+
+      if (nextInvalidated) {
+        return [...active, ...inactive, updated];
+      }
+      return [...active, updated, ...inactive];
+    });
+  };
+
+  const handleEditResult = async (slotId, imageUrl) => {
+    const slot = slots.find((s) => s.id === slotId);
+    if (!slot) return;
+
+    if (slot.urls.length >= 8) {
+      alert("最多只能上传 8 张参考图");
+      return;
+    }
+
+    let reference = imageUrl;
+    try {
+      const res = await fetch(imageUrl);
+      const blob = await res.blob();
+      reference = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      // fallback to URL if fetch fails
+    }
+
+    handleSlotChange(slotId, {
+      ...slot,
+      urls: [...slot.urls, reference],
+    });
+  };
 
   useEffect(() => {
-    reHandlTask();
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (parsed.slots?.length) {
+        setSlots(
+          parsed.slots.map((slot) => ({
+            ...createDefaultSlot(slot.id),
+            ...slot,
+            model: normalizeModel(slot.model),
+            urls: (slot.urls || []).filter(isStorableUrl),
+            isGenerating: false,
+          })),
+        );
+      }
+      if (parsed.results) setResults(normalizeStoredResults(parsed.results));
+      if (parsed.masterPrompt) setMasterPrompt(parsed.masterPrompt);
+    } catch (error) {
+      console.error("Failed to load saved data:", error);
+      localStorage.removeItem(STORAGE_KEY);
+    }
   }, []);
 
-  // Save tasks to localStorage whenever they change
   useEffect(() => {
-    if (tasks.length > 0) {
-      localStorage.setItem("savedTasks", JSON.stringify(tasks));
-    }
-  }, [tasks]);
+    const timer = setTimeout(() => {
+      saveToStorage({
+        slots: serializeSlots(slots),
+        results: serializeResults(results),
+        masterPrompt,
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [slots, results, masterPrompt]);
 
   return (
-    <>
-      <div className="relative z-11 mt-2 m-auto">
-        <div className="flex backdrop-blur-[5px] gap-3 sm:gap-4 md:gap-5 rounded-2xl flex-col lg:flex-row w-full">
-          <div className="w-full border border-violet-500/20 min-w-[300px] p-3 sm:p-4 md:p-5 bg-card/70 backdrop-blur-md rounded-2xl shadow-xl shadow-violet-500/5 lg:flex-[5]">
-            <Tasks tasks={tasks} setTasks={setTasks} />
-          </div>
-          <div className="w-full flex flex-col border border-violet-500/20 p-3 sm:p-4 md:p-5 bg-card/70 backdrop-blur-md rounded-2xl shadow-xl shadow-violet-500/5 mb-3 lg:mb-0 lg:flex-[4]">
-            <ChatSection
-              drawData={drawData}
-              setDrawData={setDrawData}
-              handleImageUpload={handleImageUpload}
-              onGenerate={onGenerate}
-              isGenerate={isGenerate}
-            />
-          </div>
+    <div className="relative z-10 mx-auto mt-2">
+      <div className="flex min-h-[calc(100vh-140px)] flex-col gap-4 lg:flex-row">
+        <div className="flex min-h-[500px] w-full flex-1 flex-col rounded-2xl border border-border bg-card/70 p-4 backdrop-blur-md lg:w-1/2">
+          <PromptListPanel
+            slots={slots}
+            masterPrompt={masterPrompt}
+            onMasterPromptChange={handleMasterPromptChange}
+            onSlotChange={handleSlotChange}
+            onAddSlot={handleAddSlot}
+            onRemoveSlot={handleRemoveSlot}
+            onSendSlot={generateForSlot}
+            onSendAll={handleSendAll}
+          />
+        </div>
+
+        <div className="flex min-h-[500px] w-full flex-1 flex-col rounded-2xl border border-border bg-card/70 p-4 backdrop-blur-md lg:w-1/2">
+          <ResultsPanel
+            results={results}
+            onEdit={handleEditResult}
+            onToggleInvalidated={toggleResultInvalidated}
+            onClearAll={clearAllResults}
+          />
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

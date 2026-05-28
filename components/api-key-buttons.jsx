@@ -25,7 +25,13 @@ const ApiKeyButtons = () => {
   }, []);
 
   const handleSaveApiKey = () => {
-    localStorage.setItem("apikey", apiKey);
+    const trimmed = apiKey.trim();
+    if (!trimmed) {
+      alert("API Key 不能为空");
+      return;
+    }
+    localStorage.setItem("apikey", trimmed);
+    setApiKey(trimmed);
     setOpen(false);
   };
 
@@ -38,39 +44,30 @@ const ApiKeyButtons = () => {
   return (
     <div className="flex gap-2">
       <Link href={config.ApiKeyUrl} target="_blank">
-        <Button variant="outline" className="border-violet-300/50 hover:bg-violet-500/10 hover:border-violet-400">
-          获取 API Key
-        </Button>
+        <Button variant="outline">获取 API Key</Button>
       </Link>
 
       <Dialog open={open} onOpenChange={SetOpen}>
         <DialogTrigger asChild>
-          <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 shadow-lg shadow-violet-500/20">
-            设置 API Key
-          </Button>
+          <Button>设置 API Key</Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-md border-violet-500/20 bg-card/95 backdrop-blur-xl">
+        <DialogContent className="sm:max-w-md border-border bg-card/95 backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle>设置 CobabaAI API Key</DialogTitle>
+            <DialogTitle>设置 CobabaAi API Key</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <Input
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="请输入您的 CobabaAI API Key"
-              className="w-full border-violet-500/30 focus-visible:ring-violet-500/50"
+              placeholder="请输入您的 CobabaAi API Key"
+              className="w-full"
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => SetOpen(false)}>
               取消
             </Button>
-            <Button
-              onClick={handleSaveApiKey}
-              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500"
-            >
-              保存
-            </Button>
+            <Button onClick={handleSaveApiKey}>保存</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

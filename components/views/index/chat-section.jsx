@@ -456,8 +456,8 @@ const Home = ({
         )}
         <div
           className={`border-2 mt-4 m-auto border-dashed ${
-            drawData.urls.length > 0 ? "border-violet-300/40" : "border-violet-500/40"
-          } rounded-xl p-6 text-center hover:border-violet-500 transition-colors cursor-pointer bg-violet-500/5`}
+            drawData.urls.length > 0 ? "border-border" : "border-teal-500/40"
+          } rounded-xl p-6 text-center hover:border-teal-600 transition-colors cursor-pointer bg-teal-500/5`}
           onDragOver={(e) => {
             e.preventDefault();
             e.currentTarget.classList.add("border-primary", "bg-primary/10");
@@ -591,7 +591,7 @@ const Home = ({
             模型选项
           </div>
           <Select value={drawData.model} onValueChange={handleModelChange}>
-            <SelectTrigger className="w-full h-11 bg-input border-violet-500/30 rounded-xl">
+            <SelectTrigger className="w-full h-11 bg-input border-border rounded-xl">
               <SelectValue>
                 <div className="flex items-center gap-2">
                   <svg
@@ -694,7 +694,7 @@ const Home = ({
             value={drawData.size}
             onValueChange={(value) => setDrawData({ ...drawData, size: value })}
           >
-            <SelectTrigger className="w-full h-11 bg-input border-violet-500/30 rounded-xl">
+            <SelectTrigger className="w-full h-11 bg-input border-border rounded-xl">
               <SelectValue>
                 <div className="flex items-center gap-2">
                   {renderSizeIcon(drawData.size)}
@@ -733,7 +733,7 @@ const Home = ({
                 setDrawData({ ...drawData, imageSize: value })
               }
             >
-              <SelectTrigger className="w-full h-11 bg-input border-violet-500/30 rounded-xl">
+              <SelectTrigger className="w-full h-11 bg-input border-border rounded-xl">
                 <SelectValue>
                   <div className="flex items-center gap-2">
                     <span>{drawData.imageSize || "1K"}</span>
@@ -770,7 +770,7 @@ const Home = ({
         )}
         <Textarea
           placeholder="Tell us how you want to edit the image"
-          className="resize-none h-[100px] text-foreground p-3 border-violet-500/30 bg-input rounded-xl"
+          className="resize-none h-[100px] text-foreground p-3 border-border bg-input rounded-xl"
           rows={4}
           value={drawData.prompt}
           onChange={(e) => setDrawData({ ...drawData, prompt: e.target.value })}
@@ -778,7 +778,7 @@ const Home = ({
       </div>
 
       <Button
-        className="w-full cursor-pointer h-12 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 border-0 transition-all duration-300 text-primary-foreground shadow-lg shadow-violet-500/25 rounded-xl font-medium"
+        className="w-full cursor-pointer h-12 border-0 transition-all duration-300 rounded-xl font-medium"
         disabled={
           (!drawData.prompt && drawData.urls.length === 0) ||
           uploading ||

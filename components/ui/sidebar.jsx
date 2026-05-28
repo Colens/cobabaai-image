@@ -202,8 +202,8 @@ export function Sidebar() {
         )}
       >
         <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2">
-          <img src="/logo.png" alt="CobabaAI API" className="w-8 h-8 rounded-lg" />
-          <h2 className="text-xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">CobabaAI</h2>
+          <img src="/logo.png" alt="CobabaAi" className="w-8 h-8 rounded-lg object-contain" />
+          <h2 className="text-xl font-semibold text-foreground">CobabaAi</h2>
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto relative z-20">
