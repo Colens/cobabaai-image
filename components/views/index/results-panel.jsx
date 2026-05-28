@@ -96,22 +96,33 @@ const ResultsPanel = ({ results, onEdit, onToggleInvalidated, onClearAll }) => {
   const visibleResults = results.filter(
     (r) => r.src || !r.finish || !isAuthErrorResult(r),
   );
-  const finishedResults = visibleResults.filter(
-    (r) => r.finish && r.src && !r.invalidated,
-  );
-  const finishedCount = visibleResults.filter((r) => r.finish && r.src).length;
-  const validCount = finishedResults.length;
+  const finishedResults = visibleResults.filter((r) => r.finish && r.src);
+  const finishedCount = finishedResults.length;
   const runningCount = visibleResults.filter((r) => !r.finish).length;
 
+  const isResultDownloadable = (result) => {
+    if (!result.finish || !result.src) return false;
+    if (brokenSrcs.has(result.src)) return false;
+    const expiry = getUrlExpiryLabel(result.completedAt);
+    return expiry.expired !== true;
+  };
+
+  const downloadableResults = finishedResults.filter(isResultDownloadable);
+
   const handleBatchDownload = async () => {
-    if (finishedResults.length === 0 || downloading) return;
+    if (downloadableResults.length === 0 || downloading) {
+      if (finishedCount > 0 && downloadableResults.length === 0) {
+        alert("没有可下载的图片，链接可能已过期，请重新生成。");
+      }
+      return;
+    }
 
     setDownloading(true);
     try {
       const zip = new JSZip();
       let index = 0;
 
-      for (const result of finishedResults) {
+      for (const result of downloadableResults) {
         index += 1;
         const isVideo = result.model && VIDEO_MODELS.includes(result.model);
         const file = await fetchAsBlob(
@@ -148,7 +159,7 @@ const ResultsPanel = ({ results, onEdit, onToggleInvalidated, onClearAll }) => {
           <span className="text-xs text-muted-foreground">
             {finishedCount} 张{runningCount > 0 ? ` · ${runningCount} 生成中` : ""}
           </span>
-          {validCount > 0 && (
+          {finishedCount > 0 && (
             <Button
               variant="outline"
               size="sm"
