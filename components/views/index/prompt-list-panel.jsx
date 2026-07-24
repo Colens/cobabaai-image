@@ -82,9 +82,9 @@ const PromptListPanel = ({
         ))}
       </div>
 
-      <div className="shrink-0 rounded-2xl border border-border bg-accent p-3">
+      <div className="shrink-0 rounded-2xl border border-border bg-muted p-3">
         <div className="mb-2 flex items-center gap-2">
-          <span className="text-xs font-semibold text-accent-foreground">
+          <span className="text-xs font-semibold text-foreground">
             总对话框
           </span>
           <span className="text-xs text-muted-foreground">

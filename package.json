@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate:claim-codes": "node scripts/generate-claim-codes.js",
+    "print:claim-codes": "node scripts/print-claim-codes.js"
   },
   "dependencies": {
     "@microsoft/clarity": "^1.0.0",

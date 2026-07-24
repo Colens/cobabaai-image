@@ -1,0 +1,110 @@
+/* Bridge Image site tokens → shadcn / Tailwind CSS variables */
+html.site-image {
+  --background: var(--img-bg);
+  --foreground: var(--img-text);
+  --card: var(--img-bg-elevated);
+  --card-foreground: var(--img-text);
+  --popover: var(--img-bg-elevated);
+  --popover-foreground: var(--img-text);
+  --primary: var(--img-accent);
+  --primary-foreground: #fff9f4;
+  --secondary: var(--img-bg-muted);
+  --secondary-foreground: var(--img-text);
+  --muted: var(--img-bg-muted);
+  --muted-foreground: var(--img-text-muted);
+  --accent: var(--img-accent-soft);
+  --accent-foreground: var(--img-text);
+  --destructive: #dc2626;
+  --border: var(--img-border);
+  --input: var(--img-bg-elevated);
+  --ring: var(--img-accent);
+  --sidebar: var(--img-bg);
+  --sidebar-foreground: var(--img-text);
+  --sidebar-primary: var(--img-accent);
+  --sidebar-primary-foreground: #fff9f4;
+  --sidebar-accent: var(--img-bg-muted);
+  --sidebar-accent-foreground: var(--img-text);
+  --sidebar-border: var(--img-border);
+  --sidebar-ring: var(--img-accent);
+  --rw-accent: var(--img-accent);
+  --rw-accent-hover: #2a2a2a;
+  color-scheme: light;
+}
+
+html.site-image.dark,
+html.site-image .dark {
+  --background: var(--img-bg);
+  --foreground: var(--img-text);
+  --card: var(--img-bg-elevated);
+  --card-foreground: var(--img-text);
+  --popover: var(--img-bg-elevated);
+  --popover-foreground: var(--img-text);
+  --primary: var(--img-accent);
+  --primary-foreground: #fff9f4;
+  --secondary: var(--img-bg-muted);
+  --secondary-foreground: var(--img-text);
+  --muted: var(--img-bg-muted);
+  --muted-foreground: var(--img-text-muted);
+  --accent: var(--img-accent-soft);
+  --accent-foreground: var(--img-text);
+  --border: var(--img-border);
+  --input: var(--img-bg-elevated);
+  --ring: var(--img-accent);
+}
+
+html.site-image body {
+  min-height: 100%;
+}
+
+.img-site-main {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--img-bg);
+  color: var(--img-text);
+}
+
+.img-site-main--batch {
+  padding-top: var(--rw-page-top-offset);
+}
+
+.img-batch-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+
+.img-batch-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.img-batch-panel {
+  border: 1px solid var(--img-border);
+  background: var(--img-bg-elevated);
+  border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(26, 26, 26, 0.04);
+}
+
+.img-site-btn-ghost--sm,
+.img-site-btn-solid--sm {
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
+a.img-model-card__doc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+html.site-image body {
+  font-family: var(--img-font-ui);
+}
+
+@media (max-width: 767px) {
+  .img-site-actions .img-site-btn-ghost--sm {
+    display: none;
+  }
+}

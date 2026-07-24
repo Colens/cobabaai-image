@@ -100,10 +100,10 @@ const PromptItem = ({
 
   return (
     <div
-      className={`group relative rounded-2xl border bg-card/90 shadow-sm transition-all hover:shadow-md ${
+      className={`group relative rounded-2xl border bg-card shadow-sm transition-all hover:shadow-md ${
         isDragOver
-          ? "border-teal-600 bg-teal-500/10 ring-2 ring-teal-500/40"
-          : "border-border/80"
+          ? "border-foreground/40 bg-muted ring-2 ring-foreground/15"
+          : "border-border"
       }`}
       onDragEnter={(e) => {
         e.preventDefault();

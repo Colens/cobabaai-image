@@ -5,7 +5,12 @@ import config from "@/config";
 import { v4 as uuidv4 } from "uuid";
 import PromptListPanel from "./prompt-list-panel";
 import ResultsPanel from "./results-panel";
-import { createDefaultSlot, supportsImageSize, normalizeModel } from "./model-config";
+import {
+  createDefaultSlot,
+  supportsImageSize,
+  normalizeModel,
+  applyModelChange,
+} from "./model-config";
 
 const STORAGE_KEY = "batchPromptData";
 
@@ -71,7 +76,7 @@ const saveToStorage = (data) => {
   }
 };
 
-const GenerateSection = () => {
+const GenerateSection = ({ initialPrompt = "", initialModel = "" }) => {
   const [slots, setSlots] = useState([createDefaultSlot(uuidv4())]);
   const [results, setResults] = useState([]);
   const slotsRef = useRef(slots);
@@ -118,9 +123,7 @@ const GenerateSection = () => {
     const baseUrl = config.ApiBaseUrl;
     const endpointMap = {
       "gpt-image-2": `${baseUrl}/v1/draw/completions`,
-      "gpt-image-2-vip": `${baseUrl}/v1/draw/completions`,
       "nano-banana-fast": `${baseUrl}/v1/draw/nano-banana`,
-      "nano-banana": `${baseUrl}/v1/draw/nano-banana`,
       "nano-banana-pro": `${baseUrl}/v1/draw/nano-banana`,
       "nano-banana-pro-vt": `${baseUrl}/v1/draw/nano-banana`,
       "nano-banana-pro-cl": `${baseUrl}/v1/draw/nano-banana`,
@@ -429,28 +432,49 @@ const GenerateSection = () => {
   };
 
   useEffect(() => {
+    let nextSlots = [createDefaultSlot(uuidv4())];
+    let nextResults = [];
+    let nextMaster = "";
+
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved);
-      if (parsed.slots?.length) {
-        setSlots(
-          parsed.slots.map((slot) => ({
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.slots?.length) {
+          nextSlots = parsed.slots.map((slot) => ({
             ...createDefaultSlot(slot.id),
             ...slot,
             model: normalizeModel(slot.model),
             urls: (slot.urls || []).filter(isStorableUrl),
             isGenerating: false,
-          })),
-        );
+          }));
+        }
+        if (parsed.results) nextResults = normalizeStoredResults(parsed.results);
+        if (parsed.masterPrompt) nextMaster = parsed.masterPrompt;
       }
-      if (parsed.results) setResults(normalizeStoredResults(parsed.results));
-      if (parsed.masterPrompt) setMasterPrompt(parsed.masterPrompt);
     } catch (error) {
       console.error("Failed to load saved data:", error);
       localStorage.removeItem(STORAGE_KEY);
     }
-  }, []);
+
+    const promptFromUrl = initialPrompt?.trim();
+    const modelFromUrl = initialModel?.trim();
+    if (promptFromUrl || modelFromUrl) {
+      const model = normalizeModel(modelFromUrl || nextSlots[0]?.model);
+      nextSlots = nextSlots.map((slot, index) => {
+        let next = applyModelChange(slot, model);
+        if (promptFromUrl && index === 0) {
+          next = { ...next, prompt: promptFromUrl };
+        }
+        return next;
+      });
+      if (promptFromUrl) nextMaster = promptFromUrl;
+    }
+
+    setSlots(nextSlots);
+    setResults(nextResults);
+    setMasterPrompt(nextMaster);
+  }, [initialPrompt, initialModel]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -464,9 +488,17 @@ const GenerateSection = () => {
   }, [slots, results, masterPrompt]);
 
   return (
-    <div className="relative z-10 mx-auto mt-2">
-      <div className="flex min-h-[calc(100vh-140px)] flex-col gap-4 lg:flex-row">
-        <div className="flex min-h-[500px] w-full flex-1 flex-col rounded-2xl border border-border bg-card/70 p-4 backdrop-blur-md lg:w-1/2">
+    <div className="relative z-10 mx-auto">
+      <div className="mb-5">
+        <h1 className="img-pricing-page__title" style={{ marginBottom: 6 }}>
+          批量生图
+        </h1>
+        <p className="img-pricing-page__sub" style={{ marginBottom: 0 }}>
+          多提示词并行出图，结果可批量下载。请先在右上角设置 API Key。
+        </p>
+      </div>
+      <div className="flex min-h-[calc(100vh-200px)] flex-col gap-4 lg:flex-row">
+        <div className="img-batch-panel flex min-h-[500px] w-full flex-1 flex-col p-4 lg:w-1/2">
           <PromptListPanel
             slots={slots}
             masterPrompt={masterPrompt}
@@ -479,7 +511,7 @@ const GenerateSection = () => {
           />
         </div>
 
-        <div className="flex min-h-[500px] w-full flex-1 flex-col rounded-2xl border border-border bg-card/70 p-4 backdrop-blur-md lg:w-1/2">
+        <div className="img-batch-panel flex min-h-[500px] w-full flex-1 flex-col p-4 lg:w-1/2">
           <ResultsPanel
             results={results}
             onEdit={handleEditResult}

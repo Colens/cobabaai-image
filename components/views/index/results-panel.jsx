@@ -189,10 +189,10 @@ const ResultsPanel = ({ results, onEdit, onToggleInvalidated, onClearAll }) => {
         </div>
       </div>
 
-      <div className="flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
-        <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <div className="flex items-start gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+        <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground/60" />
         <p>
-          图片链接有效期为 <strong>{config.ResultUrlTtlHours} 小时</strong>
+          图片链接有效期为 <strong className="text-foreground">{config.ResultUrlTtlHours} 小时</strong>
           ，过期后将无法预览，请尽快批量下载保存。浏览器内最多保留 50 条记录。
         </p>
       </div>
@@ -225,11 +225,11 @@ const ResultsPanel = ({ results, onEdit, onToggleInvalidated, onClearAll }) => {
                 >
                   {!result.finish ? (
                     <div className="flex h-full flex-col items-center justify-center gap-2 p-2">
-                      <Loader2 className="h-5 w-5 animate-spin text-teal-600 dark:text-teal-400" />
+                      <Loader2 className="h-5 w-5 animate-spin text-foreground/70" />
                       <div className="w-full px-1">
                         <div className="h-1 overflow-hidden rounded-full bg-muted">
                           <div
-                            className="h-full rounded-full bg-teal-600 transition-all"
+                            className="h-full rounded-full bg-foreground transition-all"
                             style={{ width: `${result.progress || 0}%` }}
                           />
                         </div>
