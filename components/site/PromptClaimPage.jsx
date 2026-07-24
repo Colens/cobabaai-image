@@ -4,9 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { SITE_ROUTES } from "./routes";
 
+function joinAllCandidates(candidates) {
+  if (!Array.isArray(candidates) || candidates.length === 0) return "";
+  return candidates
+    .map((item) => String(item ?? "").trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export default function PromptClaimPage() {
   const [claimCode, setClaimCode] = useState("");
   const [prompt, setPrompt] = useState("");
+  const [candidateCount, setCandidateCount] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -16,6 +25,7 @@ export default function PromptClaimPage() {
     const value = claimCode.trim();
     setError("");
     setPrompt("");
+    setCandidateCount(0);
     setCopied(false);
 
     if (!value) {
@@ -35,7 +45,20 @@ export default function PromptClaimPage() {
         setError(data.error || "领取失败");
         return;
       }
-      setPrompt(data.prompt || "");
+
+      const joined =
+        typeof data.prompt === "string" && data.prompt
+          ? data.prompt
+          : joinAllCandidates(data.allCandidates);
+      if (!joined) {
+        setError("领取码无效");
+        return;
+      }
+
+      setPrompt(joined);
+      setCandidateCount(
+        Array.isArray(data.allCandidates) ? data.allCandidates.length : 0,
+      );
     } catch {
       setError("网络错误，请稍后重试");
     } finally {
@@ -152,6 +175,18 @@ export default function PromptClaimPage() {
                 }}
               >
                 提示词
+                {candidateCount > 0 ? (
+                  <span
+                    style={{
+                      marginLeft: 8,
+                      fontWeight: 500,
+                      color: "var(--img-text-muted)",
+                      fontSize: 13,
+                    }}
+                  >
+                    （已拼接 {candidateCount} 段）
+                  </span>
+                ) : null}
               </h2>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button
@@ -173,7 +208,7 @@ export default function PromptClaimPage() {
             <textarea
               readOnly
               value={prompt}
-              rows={14}
+              rows={16}
               className="img-site-prompt-input"
               style={{
                 width: "100%",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
-  lookupPromptByClaimCode,
+  joinAllCandidates,
+  lookupAllCandidatesByClaimCode,
   normalizeClaimCode,
 } from "@/lib/strykef-prompts";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
@@ -42,11 +43,13 @@ export async function POST(request) {
   }
 
   try {
-    const prompt = lookupPromptByClaimCode(claimCode);
-    if (prompt == null || prompt === "") {
+    const allCandidates = lookupAllCandidatesByClaimCode(claimCode);
+    if (!allCandidates?.length) {
       return NextResponse.json({ error: "领取码无效" }, { status: 404 });
     }
-    return NextResponse.json({ prompt });
+
+    const prompt = joinAllCandidates(allCandidates);
+    return NextResponse.json({ allCandidates, prompt });
   } catch (error) {
     console.error("[prompt-claim]", error);
     return NextResponse.json({ error: "服务暂不可用" }, { status: 500 });
