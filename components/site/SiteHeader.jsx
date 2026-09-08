@@ -9,6 +9,7 @@ import ApiKeyButtons from "@/components/api-key-buttons";
 const NAV_ITEMS = [
   { path: SITE_ROUTES.home, label: "首页" },
   { path: SITE_ROUTES.models, label: "模型价格" },
+  { path: SITE_ROUTES.topup, label: "充值", external: true },
   { path: SITE_ROUTES.batch, label: "批量生图", exact: true },
   { path: SITE_ROUTES.promptClaim, label: "提示词领取" },
   { path: SITE_ROUTES.docs, label: "API 文档", external: true },

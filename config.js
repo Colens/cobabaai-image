@@ -8,7 +8,7 @@ export default {
   LogoSquare: "/logo-square.png",
   HelpMail: "",
   WebUrl: "https://image.videomakerplus.com",
-  ApiBaseUrl: "https://api.cobabaai.com",
+  ApiBaseUrl: "https://cobabaai.com",
   ApiKeyUrl: "https://cobabaai.com/console/token",
   googleClientId: "",
   /** API 返回的图片 CDN 链接有效期（小时） */

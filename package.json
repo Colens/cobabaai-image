@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "generate:claim-codes": "node scripts/generate-claim-codes.js",
-    "print:claim-codes": "node scripts/print-claim-codes.js"
+    "print:claim-codes": "node scripts/print-claim-codes.js",
+    "deploy": "node scripts/deploy-vercel.js"
   },
   "dependencies": {
     "@microsoft/clarity": "^1.0.0",

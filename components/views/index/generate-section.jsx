@@ -64,7 +64,6 @@ const saveToStorage = (data) => {
             imageSize,
             urls: [],
             variants: 1,
-            webHook: "-1",
           })),
           results: [],
           masterPrompt: data.masterPrompt,
@@ -105,45 +104,86 @@ const GenerateSection = ({ initialPrompt = "", initialModel = "" }) => {
     return savedApiKey || process.env.API_KEY;
   };
 
-  const parseApiError = async (res) => {
-    try {
-      const data = await res.json();
-      return (
-        data?.msg ||
-        data?.error?.message ||
-        data?.message ||
-        `请求失败 (${res.status})`
-      );
-    } catch {
-      return `请求失败 (${res.status})`;
-    }
+  const asText = (value) => {
+    if (typeof value !== "string") return "";
+    const text = value.trim();
+    return !text || text === "undefined" ? "" : text;
   };
 
-  const getAPIEndpoint = (model) => {
-    const baseUrl = config.ApiBaseUrl;
-    const endpointMap = {
-      "gpt-image-2": `${baseUrl}/v1/draw/completions`,
-      "nano-banana-fast": `${baseUrl}/v1/draw/nano-banana`,
-      "nano-banana-pro": `${baseUrl}/v1/draw/nano-banana`,
-      "nano-banana-pro-vt": `${baseUrl}/v1/draw/nano-banana`,
-      "nano-banana-pro-cl": `${baseUrl}/v1/draw/nano-banana`,
-      "nano-banana-pro-vip": `${baseUrl}/v1/draw/nano-banana`,
-      "nano-banana-pro-4k-vip": `${baseUrl}/v1/draw/nano-banana`,
-      "nano-banana-2": `${baseUrl}/v1/draw/nano-banana`,
-      "nano-banana-2-cl": `${baseUrl}/v1/draw/nano-banana`,
-      "nano-banana-2-4k-cl": `${baseUrl}/v1/draw/nano-banana`,
-    };
-    return endpointMap[model] || `${baseUrl}/v1/draw/completions`;
+  const extractApiMessage = (data, fallback = "生成失败") => {
+    const fallbackText = asText(fallback) || "生成失败";
+    if (!data || typeof data !== "object") return fallbackText;
+
+    const fromErrorObject =
+      data.error && typeof data.error === "object"
+        ? asText(data.error.message) ||
+          asText(data.error.msg) ||
+          asText(data.error.detail)
+        : "";
+
+    return (
+      asText(typeof data.error === "string" ? data.error : "") ||
+      fromErrorObject ||
+      asText(data.message) ||
+      asText(data.msg) ||
+      asText(data.failure_reason) ||
+      asText(data.data?.error) ||
+      asText(data.data?.message) ||
+      asText(data.data?.msg) ||
+      fallbackText
+    );
   };
+
+  const notifyError = (message, fallback = "生成失败") => {
+    alert(asText(message) || asText(fallback) || "生成失败");
+  };
+
+  const unwrapTaskPayload = (data) => {
+    if (!data || typeof data !== "object") return {};
+    const nested = data.data;
+    if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+      return {
+        ...nested,
+        id: nested.id || data.id || nested.task_id,
+        status: nested.status || data.status,
+        progress: nested.progress ?? data.progress,
+        results: nested.results || data.results,
+        error: nested.error || data.error,
+      };
+    }
+    return data;
+  };
+
+  const getTaskId = (data) =>
+    data?.id || data?.task_id || data?.data?.id || data?.data?.task_id || "";
+
+  const getTaskStatus = (data) =>
+    String(data?.status || data?.state || data?.data?.status || "").toLowerCase();
+
+  const extractResultUrl = (data) => {
+    const results = data?.results || data?.data?.results;
+    if (Array.isArray(results) && results[0]?.url) return results[0].url;
+    if (typeof data?.url === "string") return data.url;
+    if (typeof data?.data?.url === "string") return data.data.url;
+    return "";
+  };
+
+  const isTaskFailed = (status) =>
+    status === "failed" || status === "violation" || status === "error";
+
+  const isTaskSucceeded = (status, data) =>
+    status === "succeeded" ||
+    status === "success" ||
+    status === "completed" ||
+    (!status && !!extractResultUrl(data));
 
   const buildRequestData = (slot) => {
     const requestData = {
-      prompt: slot.prompt,
-      variants: slot.variants,
       model: slot.model,
-      urls: slot.urls,
-      webHook: slot.webHook,
-      aspectRatio: slot.size,
+      prompt: slot.prompt || "",
+      images: slot.urls || [],
+      aspectRatio: slot.size || "auto",
+      replyType: "async",
     };
 
     if (supportsImageSize(slot.model)) {
@@ -161,72 +201,86 @@ const GenerateSection = ({ initialPrompt = "", initialModel = "" }) => {
 
   const handleTask = async (resultId, taskId, slotId) => {
     const baseUrl = config.ApiBaseUrl;
+    const pollIntervalMs = 2000;
+    const maxPolls = 450;
 
     try {
-      while (true) {
-        const res = await fetch(`${baseUrl}/v1/draw/result`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + getAPIKEY(),
+      for (let i = 0; i < maxPolls; i++) {
+        const res = await fetch(
+          `${baseUrl}/v1/api/result?id=${encodeURIComponent(taskId)}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: "Bearer " + getAPIKEY(),
+            },
+            cache: "no-store",
           },
-          body: JSON.stringify({ id: taskId }),
-        });
-        const result = await res.json();
+        );
 
-        if (result.code === -22) {
-          updateResult(resultId, {
-            finish: true,
-            progress: 100,
-            error: "超时",
-            failureReason: "超时",
-          });
-          break;
+        let result = {};
+        try {
+          result = unwrapTaskPayload(await res.json());
+        } catch {
+          result = {};
         }
 
-        if (result.code !== 0) {
-          alert(result.msg);
-          break;
-        }
+        const status = getTaskStatus(result);
+        const errorMessage = extractApiMessage(result, `请求失败 (${res.status})`);
 
-        const data = result.data;
-
-        if (data.status === "running") {
+        if (status === "running" || status === "submitted" || status === "queued") {
           updateResult(resultId, {
             finish: false,
-            progress: data.progress,
+            progress: result.progress ?? result.data?.progress ?? 0,
           });
-          await new Promise((resolve) => setTimeout(resolve, 5000));
+          await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
           continue;
         }
 
-        if (data.status === "succeeded") {
-          let resultUrl = "";
-          if (data.results?.length > 0) {
-            resultUrl = data.results[0].url;
-          } else if (data.url) {
-            resultUrl = data.url;
-          }
-
-          updateResult(resultId, {
-            finish: true,
-            progress: data.progress,
-            src: resultUrl,
-            completedAt: Date.now(),
-          });
-          break;
-        }
-
-        if (data.status === "failed") {
+        if (isTaskFailed(status)) {
+          const message =
+            status === "violation"
+              ? errorMessage || "提示词或图片内容违规，请修改后重试"
+              : errorMessage || `请求失败 (${res.status})`;
           updateResult(resultId, {
             finish: true,
             progress: 100,
-            failureReason: data.failure_reason,
-            error: data.error,
+            failureReason: message,
+            error: message,
           });
-          break;
+          return;
         }
+
+        if (isTaskSucceeded(status, result) || extractResultUrl(result)) {
+          updateResult(resultId, {
+            finish: true,
+            progress: result.progress ?? 100,
+            src: extractResultUrl(result),
+            completedAt: Date.now(),
+          });
+          return;
+        }
+
+        const retryable = !res.ok && (res.status === 404 || res.status >= 500);
+        if (!res.ok && !retryable) {
+          const message = errorMessage || `请求失败 (${res.status})`;
+          updateResult(resultId, {
+            finish: true,
+            progress: 100,
+            failureReason: message,
+            error: message,
+          });
+          return;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
       }
+
+      updateResult(resultId, {
+        finish: true,
+        progress: 100,
+        error: "超时",
+        failureReason: "超时",
+      });
     } finally {
       updateSlot(slotId, { isGenerating: false });
     }
@@ -258,7 +312,7 @@ const GenerateSection = ({ initialPrompt = "", initialModel = "" }) => {
     ]);
 
     try {
-      const res = await fetch(getAPIEndpoint(slot.model), {
+      const res = await fetch(`${config.ApiBaseUrl}/v1/api/generate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -268,45 +322,60 @@ const GenerateSection = ({ initialPrompt = "", initialModel = "" }) => {
         cache: "no-store",
       });
 
-      if (!res.ok) {
-        const message = await parseApiError(res);
+      let data = {};
+      try {
+        data = unwrapTaskPayload(await res.json());
+      } catch {
+        data = {};
+      }
+
+      const status = getTaskStatus(data);
+      const message = extractApiMessage(data, `请求失败 (${res.status})`);
+
+      if (!res.ok || isTaskFailed(status)) {
         if (isAuthError(message, res.status)) {
-          alert(
+          notifyError(
             "API Key 无效或已过期，请点击右上角「设置 API Key」重新填写。\n\n" +
               message,
           );
           removeResult(resultId);
         } else {
-          alert(message);
+          const errorText =
+            status === "violation"
+              ? message || "提示词或图片内容违规，请修改后重试"
+              : message;
+          notifyError(errorText);
           updateResult(resultId, {
             finish: true,
-            error: message,
+            error: errorText,
           });
         }
         return;
       }
 
-      const data = await res.json();
-      if (data.code !== 0) {
-        if (isAuthError(data.msg)) {
-          alert(
-            "API Key 无效或已过期，请点击右上角「设置 API Key」重新填写。\n\n" +
-              data.msg,
-          );
-          removeResult(resultId);
-        } else {
-          alert(data.msg);
-          updateResult(resultId, {
-            finish: true,
-            error: data.msg,
-          });
-        }
+      if (isTaskSucceeded(status, data) && extractResultUrl(data)) {
+        updateResult(resultId, {
+          finish: true,
+          progress: data.progress ?? 100,
+          src: extractResultUrl(data),
+          taskId: getTaskId(data),
+          completedAt: Date.now(),
+        });
         return;
       }
 
-      const taskId = data.data.id;
+      const taskId = getTaskId(data);
+      if (!taskId) {
+        const missingId = message || "响应中未找到任务 id";
+        notifyError(missingId, "响应中未找到任务 id");
+        updateResult(resultId, {
+          finish: true,
+          error: missingId,
+        });
+        return;
+      }
+
       updateResult(resultId, { taskId });
-
       await handleTask(resultId, taskId, slotId);
     } catch (error) {
       console.error("Error generating image:", error);

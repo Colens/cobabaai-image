@@ -14,6 +14,8 @@ import {
   MODEL_OPTIONS,
   applyModelChange,
   getAvailableSizes,
+  getImageSizeOptions,
+  getSizeLabel,
   supportsImageSize,
 } from "./model-config";
 import { ArrowUp, Plus, Trash2, X } from "lucide-react";
@@ -209,7 +211,7 @@ const PromptItem = ({
               value={slot.model}
               onValueChange={(model) => onChange(applyModelChange(slot, model))}
             >
-              <SelectTrigger className="h-8 max-w-[130px] border-border/60 bg-muted/30 text-xs">
+              <SelectTrigger className="h-8 max-w-[168px] border-border/60 bg-muted/30 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -225,13 +227,13 @@ const PromptItem = ({
               value={slot.size}
               onValueChange={(size) => onChange({ ...slot, size })}
             >
-              <SelectTrigger className="h-8 max-w-[90px] border-border/60 bg-muted/30 text-xs">
+              <SelectTrigger className="h-8 max-w-[140px] border-border/60 bg-muted/30 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {getAvailableSizes(slot.model).map((size) => (
                   <SelectItem key={size} value={size}>
-                    {size}
+                    {getSizeLabel(slot.model, size)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -246,17 +248,11 @@ const PromptItem = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {slot.model !== "nano-banana-2-4k-cl" &&
-                    slot.model !== "nano-banana-pro-4k-vip" && (
-                      <>
-                        <SelectItem value="1K">1K</SelectItem>
-                        <SelectItem value="2K">2K</SelectItem>
-                      </>
-                    )}
-                  {slot.model !== "nano-banana-2-cl" &&
-                    slot.model !== "nano-banana-pro-vip" && (
-                      <SelectItem value="4K">4K</SelectItem>
-                    )}
+                  {getImageSizeOptions(slot.model).map((imageSize) => (
+                    <SelectItem key={imageSize} value={imageSize}>
+                      {imageSize}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}

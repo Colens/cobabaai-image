@@ -3,8 +3,11 @@ import { MODEL_OPTIONS } from "@/components/views/index/model-config";
 /** Fallback prices (¥ / request) from CobabaAi docs — used if /api/pricing fails */
 export const FALLBACK_MODEL_PRICES_CNY = {
   "gpt-image-2": 0.066,
+  "gpt-image-2-vip": 0.22,
   "nano-banana-fast": 0.048,
+  "nano-banana": 0.066,
   "nano-banana-pro": 0.198,
+  "nano-banana-pro-preview": 0.36,
   "nano-banana-pro-vt": 0.198,
   "nano-banana-pro-cl": 1.1,
   "nano-banana-pro-vip": 1.1,
@@ -14,20 +17,13 @@ export const FALLBACK_MODEL_PRICES_CNY = {
   "nano-banana-2-4k-cl": 1.43,
 };
 
-/** Image site: 1 元 = 100 积分 */
-export const IMAGE_POINTS_PER_CNY = 100;
 const DEFAULT_USD_CNY = 7.3;
 
-export function cnyToImagePoints(cny) {
-  const amount = Number(cny);
-  if (!Number.isFinite(amount)) return 0;
-  return Math.round(amount * IMAGE_POINTS_PER_CNY);
-}
-
+/** Match CobabaAi console/docs: ¥0.066 / 次 */
 export function formatPriceLine(cny) {
   if (cny == null || !Number.isFinite(Number(cny))) return "—";
-  const points = cnyToImagePoints(cny);
-  return `按次 ${points.toLocaleString("zh-CN")} 积分`;
+  const amount = Number(cny);
+  return `¥${amount.toFixed(3)} / 次`;
 }
 
 export function shouldExcludeModel(name) {
@@ -50,7 +46,7 @@ export function getDefaultModelList() {
 
 /**
  * CobabaAi /api/pricing: data[] with quota_type=1 model_price in USD.
- * Convert to CNY then to Image 积分 (1 元 = 100 积分).
+ * Convert to CNY for display (same as console /docs pricing).
  */
 export function parsePricingApiPayload(payload) {
   const models = Array.isArray(payload?.data)

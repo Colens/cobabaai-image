@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import ModelCard from "./ModelCard";
 import { getDefaultModelList } from "./modelPrices";
 import { pickRandomShowcaseImage, useShowcaseImages } from "./useShowcaseImages";
-import { SITE_BRAND } from "../constants";
 
 export default function ModelsPage({ initialModels }) {
   const models = initialModels?.length ? initialModels : getDefaultModelList();
@@ -27,14 +26,14 @@ export default function ModelsPage({ initialModels }) {
         <p className="img-pricing-page__sub">
           选择模型查看价格，或进入批量生图开始创作。价格与{" "}
           <a
-            href={SITE_BRAND.pricingDocsUrl}
+            href="https://cobabaai.com/console/pricing"
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: "inherit", textDecoration: "underline" }}
           >
-            CobabaAi 计费文档
+            CobabaAi 模型列表
           </a>{" "}
-          同步（1 元 = 100 积分）。
+          同步（人民币 / 次）。
         </p>
 
         {models.length === 0 ? (
